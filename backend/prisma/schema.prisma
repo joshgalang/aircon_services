@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Branch {
+  id          Int       @id @default(autoincrement())
+  branch_name String
+  address     String?   @db.Text
+  created_at  DateTime  @default(now())
+
+  users               User[]
+  inquiries           Inquiry[]
+  appointments        Appointment[]
+  inventory_items     InventoryItem[]
+  inventory_logs      InventoryLog[]
+  invoices            Invoice[]
+  payments            Payment[]
+  expenses            Expense[]
+  service_categories    BranchServiceCategory[]
+  inventory_brands      BranchInventoryBrand[]
+  manual_ledger_entries ManualLedgerEntry[]
+}
+
+model BranchServiceCategory {
+  id         Int      @id @default(autoincrement())
+  branch_id  Int
+  slug       String
+  label      String
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+
+  branch Branch @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@unique([branch_id, slug])
+}
+
+model BranchInventoryBrand {
+  id         Int      @id @default(autoincrement())
+  branch_id  Int
+  name       String
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+
+  branch Branch @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@unique([branch_id, name])
+}
+
+model User {
+  id         Int    @id @default(autoincrement())
+  branch_id  Int
+  username   String @unique
+  password   String
+  role       String @default("admin")
+
+  branch Branch @relation(fields: [branch_id], references: [id], onDelete: Restrict)
+}
+
+model Inquiry {
+  id               Int      @id @default(autoincrement())
+  branch_id        Int
+  customer_name    String
+  contact_number   String
+  email            String?
+  address          String?  @db.Text
+  message          String?  @db.Text
+  service_category String   @default("other")
+  status           String   @default("pending")
+  created_at       DateTime @default(now())
+
+  branch       Branch        @relation(fields: [branch_id], references: [id], onDelete: Restrict)
+  appointments Appointment[]
+  invoices     Invoice[]
+}
+
+model Appointment {
+  id               Int      @id @default(autoincrement())
+  branch_id        Int
+  inquiry_id       Int?
+  customer_name    String
+  contact_number   String
+  service_category String   @default("other")
+  service_type     String
+  scheduled_date   DateTime
+  status           String   @default("pending")
+  notes            String?  @db.Text
+  created_at       DateTime @default(now())
+
+  branch   Branch    @relation(fields: [branch_id], references: [id], onDelete: Restrict)
+  inquiry  Inquiry?  @relation(fields: [inquiry_id], references: [id], onDelete: SetNull)
+  invoices Invoice[]
+}
+
+model Invoice {
+  id               Int       @id @default(autoincrement())
+  branch_id        Int
+  appointment_id   Int?
+  inquiry_id       Int?
+  invoice_number   String
+  customer_name    String
+  contact_number   String?
+  job_description  String?   @db.Text
+  subtotal         Decimal   @db.Decimal(12, 2)
+  tax_amount       Decimal   @default(0) @db.Decimal(12, 2)
+  total            Decimal   @db.Decimal(12, 2)
+  status           String    @default("draft")
+  due_date         DateTime?
+  issued_at        DateTime  @default(now())
+  paid_at          DateTime?
+  notes            String?   @db.Text
+  created_at       DateTime  @default(now())
+
+  branch      Branch       @relation(fields: [branch_id], references: [id], onDelete: Restrict)
+  appointment Appointment? @relation(fields: [appointment_id], references: [id], onDelete: SetNull)
+  inquiry     Inquiry?     @relation(fields: [inquiry_id], references: [id], onDelete: SetNull)
+  payments    Payment[]
+
+  @@unique([branch_id, invoice_number])
+}
+
+model Payment {
+  id          Int      @id @default(autoincrement())
+  branch_id   Int
+  invoice_id  Int
+  amount      Decimal  @db.Decimal(12, 2)
+  method      String
+  reference   String?
+  paid_at     DateTime @default(now())
+  notes       String?  @db.Text
+  created_at  DateTime @default(now())
+
+  branch  Branch  @relation(fields: [branch_id], references: [id], onDelete: Restrict)
+  invoice Invoice @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id             Int      @id @default(autoincrement())
+  branch_id      Int
+  category       String
+  description    String   @db.Text
+  amount         Decimal  @db.Decimal(12, 2)
+  vendor         String?
+  expense_date   DateTime @default(now())
+  payment_method String?
+  reference      String?
+  notes          String?  @db.Text
+  created_at     DateTime @default(now())
+
+  branch Branch @relation(fields: [branch_id], references: [id], onDelete: Restrict)
+}
+
+// Miscellaneous money in/out for accounting / KYC (not tied to an invoice).
+model ManualLedgerEntry {
+  id                 Int      @id @default(autoincrement())
+  branch_id          Int
+  direction          String
+  amount             Decimal  @db.Decimal(12, 2)
+  method             String
+  reference          String?
+  counterparty_name  String?
+  purpose            String   @db.Text
+  paid_at            DateTime @default(now())
+  notes              String?  @db.Text
+  created_at         DateTime @default(now())
+
+  branch Branch @relation(fields: [branch_id], references: [id], onDelete: Restrict)
+}
+
+model InventoryItem {
+  id            Int      @id @default(autoincrement())
+  branch_id     Int
+  item_name     String
+  category      String?
+  brand         String?
+  model_number  String?
+  part_number   String?
+  capacity_hp   Decimal? @db.Decimal(5, 2)
+  weight_kg     Decimal? @db.Decimal(10, 3)
+  refrigerant   String?
+  voltage       String?
+  notes         String?  @db.Text
+  quantity      Int      @default(0)
+  unit          String?
+  price         Decimal? @db.Decimal(12, 2)
+  created_at    DateTime @default(now())
+
+  branch Branch         @relation(fields: [branch_id], references: [id], onDelete: Restrict)
+  logs   InventoryLog[]
+}
+
+model InventoryLog {
+  id         Int      @id @default(autoincrement())
+  branch_id  Int
+  item_id    Int
+  type       String
+  quantity   Int
+  created_at DateTime @default(now())
+
+  branch Branch        @relation(fields: [branch_id], references: [id], onDelete: Restrict)
+  item   InventoryItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+}
