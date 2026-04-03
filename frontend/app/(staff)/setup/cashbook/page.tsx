@@ -17,6 +17,7 @@ import {
   PAYMENT_METHOD_OPTIONS,
 } from "@/lib/accountingPresets";
 import { apiErrorMessage } from "@/lib/apiErrorMessage";
+import { datetimeLocalValueToUtcIso } from "@/lib/datetimeLocal";
 import { useToast } from "@/providers/ToastProvider";
 
 type Branch = { id: number; branch_name: string };
@@ -130,6 +131,15 @@ export default function CashbookPage() {
     });
     if (!ok) return;
     try {
+      let paidAtIso: string | undefined;
+      if (v.paid_at?.trim()) {
+        try {
+          paidAtIso = datetimeLocalValueToUtcIso(v.paid_at);
+        } catch {
+          toast.error("Invalid date/time.");
+          return;
+        }
+      }
       const body: Record<string, unknown> = {
         direction: v.direction,
         amount: Number(v.amount),
@@ -138,7 +148,7 @@ export default function CashbookPage() {
         reference: v.reference.trim() || undefined,
         counterparty_name: v.counterparty_name.trim() || undefined,
         notes: v.notes.trim() || undefined,
-        paid_at: v.paid_at || undefined,
+        paid_at: paidAtIso,
       };
       if (isHq) {
         if (!v.branch_id) {

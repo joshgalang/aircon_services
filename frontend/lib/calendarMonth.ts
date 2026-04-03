@@ -23,9 +23,18 @@ export function parseLocalDateKey(key: string): Date | null {
   return dt;
 }
 
-/** ISO datetime string → local date key for appointment display. */
+/**
+ * ISO datetime from API → `YYYY-MM-DD` for calendar cells / day filters.
+ * Uses UTC date parts so keys match PostgreSQL naive `timestamp` values serialized with `Z`
+ * (browser local `getDate()` would shift the day in PH).
+ */
 export function isoToLocalDateKey(iso: string): string {
-  return localDateKey(new Date(iso));
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return localDateKey(d);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export type CalendarCell = {

@@ -17,6 +17,10 @@ import {
   normalizePhilippinePhone,
 } from "@/lib/phPhone";
 import { apiErrorMessage } from "@/lib/apiErrorMessage";
+import {
+  datetimeLocalValueToUtcIso,
+  formatScheduledDateTimeForDisplay,
+} from "@/lib/datetimeLocal";
 import { useToast } from "@/providers/ToastProvider";
 
 type Inquiry = {
@@ -155,11 +159,18 @@ export default function AppointmentsPage() {
       return;
     }
     try {
+      let scheduledIso: string;
+      try {
+        scheduledIso = datetimeLocalValueToUtcIso(v.scheduled_date);
+      } catch {
+        toast.error("Invalid scheduled date.");
+        return;
+      }
       const body: Record<string, unknown> = {
         customer_name: v.customer_name,
         contact_number: phone.e164,
         service_type: v.service_type,
-        scheduled_date: v.scheduled_date,
+        scheduled_date: scheduledIso,
         notes: v.notes || undefined,
         service_category: v.service_category,
       };
@@ -370,7 +381,7 @@ export default function AppointmentsPage() {
               filteredRows.map((r) => (
                 <tr key={r.id} className="border-b border-slate-100">
                   <td className="px-3 py-2 text-slate-700">
-                    {new Date(r.scheduled_date).toLocaleString()}
+                    {formatScheduledDateTimeForDisplay(r.scheduled_date)}
                   </td>
                   <td className="px-3 py-2">
                     <div className="font-medium text-slate-900">{r.customer_name}</div>

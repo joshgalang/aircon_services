@@ -11,6 +11,10 @@ import {
 import api from "@/lib/api";
 import { addMonths, isoToLocalDateKey, localDateKey } from "@/lib/calendarMonth";
 import {
+  formatScheduledDateTimeForDisplay,
+  formatScheduledTimeForDisplay,
+} from "@/lib/datetimeLocal";
+import {
   AppointmentMonthCalendar,
   type CalendarAppointment,
 } from "@/components/dashboard/AppointmentMonthCalendar";
@@ -285,10 +289,7 @@ function JobCalendarModal({
                       {a.customer_name}
                     </div>
                     <div className="mt-0.5 text-xs text-slate-600">
-                      {new Date(a.scheduled_date).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}{" "}
+                      {formatScheduledTimeForDisplay(a.scheduled_date)}{" "}
                       · {labelFor(a.service_category)} · {a.service_type}
                     </div>
                     {a.contact_number && (
@@ -414,10 +415,7 @@ function DayAppointmentsModal({
                   {a.customer_name}
                 </div>
                 <div className="mt-0.5 text-xs text-slate-600">
-                  {new Date(a.scheduled_date).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}{" "}
+                  {formatScheduledTimeForDisplay(a.scheduled_date)}{" "}
                   · {labelFor(a.service_category)} · {a.service_type}
                 </div>
                 {a.contact_number && (
@@ -557,10 +555,10 @@ export default function DashboardPage() {
   const monthAppointments = useMemo(() => {
     const y = monthAnchor.getFullYear();
     const m = monthAnchor.getMonth();
-    return appointments.filter((a) => {
-      const d = new Date(a.scheduled_date);
-      return d.getFullYear() === y && d.getMonth() === m;
-    });
+    const prefix = `${y}-${String(m + 1).padStart(2, "0")}-`;
+    return appointments.filter((a) =>
+      isoToLocalDateKey(a.scheduled_date).startsWith(prefix)
+    );
   }, [appointments, monthAnchor]);
 
   const stats = useMemo(() => {
@@ -979,12 +977,7 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-center gap-1 font-semibold text-slate-800">
                       <IconDashCalendar className="h-3 w-3 shrink-0 text-brand-600" />
-                      {new Date(a.scheduled_date).toLocaleString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatScheduledDateTimeForDisplay(a.scheduled_date)}
                     </div>
                     <div className="mt-0.5 font-medium text-slate-900">
                       {a.customer_name}
